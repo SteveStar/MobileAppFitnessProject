@@ -133,6 +133,13 @@ export default function WorkoutApp() {
       <Text style={headerStyles.title}>Fitness App</Text>
       
       <View style={buttonStyles.buttonContainer}>
+      <TouchableOpacity 
+    style={buttonStyles.button}
+    onPress={() => setCurrentScreen('workout')}
+  >
+    <Text style={buttonStyles.buttonText}>Workout</Text>
+  </TouchableOpacity>
+
         <TouchableOpacity 
           style={buttonStyles.button}
           onPress={() => setCurrentScreen('settings')}
@@ -240,6 +247,132 @@ export default function WorkoutApp() {
     </ScrollView>
   );
 
+    
+  const WorkoutScreen = () => {
+    const [exercise, setExercise] = useState('');
+    const [duration, setDuration] = useState('');
+    const [workouts, setWorkouts] = useState([]);
+
+    // Load saved workouts
+    useEffect(() => {
+      loadWorkouts();
+    }, []);
+
+    const loadWorkouts = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('workout-logs');
+        if (stored) {
+          setWorkouts(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log("Error loading workouts", e);
+      }
+    };
+
+    const saveWorkouts = async (newList) => {
+      try {
+        await AsyncStorage.setItem('workout-logs', JSON.stringify(newList));
+      } catch (e) {
+        console.log("Error saving workouts", e);
+      }
+    };
+
+    const addWorkout = () => {
+      if (!exercise || !duration) return;
+
+      const caloriesBurned = Math.round(Number(duration) * 8); 
+      // Basic calorie formula (placeholder)
+
+      const newWorkout = {
+        id: Date.now(),
+        exercise,
+        duration,
+        calories: caloriesBurned,
+      };
+
+      const updatedList = [...workouts, newWorkout];
+      setWorkouts(updatedList);
+      saveWorkouts(updatedList);
+
+      setExercise('');
+      setDuration('');
+    };
+
+    return (
+      <ScrollView style={appStyles.container}>
+        <View style={headerStyles.header}>
+          <TouchableOpacity 
+            onPress={() => setCurrentScreen('home')}
+            style={headerStyles.backButton}
+          >
+            <Text style={headerStyles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={headerStyles.settingsTitle}>Workouts</Text>
+        </View>
+
+        <View style={sectionStyles.section}>
+          <Text style={sectionStyles.sectionTitle}>Add Workout</Text>
+
+          <View style={settingsStyles.settingsItem}>
+            <Text style={settingsStyles.settingsLabel}>Exercise</Text>
+          </View>
+
+          <View style={settingsStyles.settingsItem}>
+            <TextInput
+              style={{ flex: 1, color: settings.darkMode ? '#fff' : '#000' }}
+              placeholder="Push-ups, Running, etc."
+              placeholderTextColor="#888"
+              value={exercise}
+              onChangeText={setExercise}
+            />
+          </View>
+
+          <View style={settingsStyles.settingsItem}>
+            <Text style={settingsStyles.settingsLabel}>Duration (minutes)</Text>
+          </View>
+
+          <View style={settingsStyles.settingsItem}>
+            <TextInput
+              style={{ flex: 1, color: settings.darkMode ? '#fff' : '#000' }}
+              placeholder="30"
+              placeholderTextColor="#888"
+              keyboardType="numeric"
+              value={duration}
+              onChangeText={setDuration}
+            />
+          </View>
+
+          <TouchableOpacity 
+            style={[buttonStyles.button, buttonStyles.successButton]}
+            onPress={addWorkout}
+          >
+            <Text style={buttonStyles.buttonText}>Add Workout</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={sectionStyles.section}>
+          <Text style={sectionStyles.sectionTitle}>Workout Log</Text>
+
+          {workouts.length === 0 ? (
+            <Text style={{ color: settings.darkMode ? '#aaa' : '#555', textAlign: 'center', marginTop: 10 }}>
+              No workouts logged yet.
+            </Text>
+          ) : (
+            workouts.map((item) => (
+              <View key={item.id} style={settingsStyles.settingsItem}>
+                <Text style={settingsStyles.settingsLabel}>
+                  {item.exercise} — {item.duration} min — {item.calories} cal
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+      </ScrollView>
+    );
+  };
+
+
   if (isLoading) {
     return (
       <View style={[appStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -252,6 +385,8 @@ export default function WorkoutApp() {
     <View style={appStyles.appContainer}>
       <StatusBar backgroundColor={settings.darkMode ? Colors.dark.background : Colors.light.background} />
       {currentScreen === 'home' ? <HomeScreen /> : <SettingsScreen />}
+      {currentScreen === 'settings' && <SettingsScreen />}
+      {currentScreen === 'workout' && <WorkoutScreen />}
     </View>
   );
 }
