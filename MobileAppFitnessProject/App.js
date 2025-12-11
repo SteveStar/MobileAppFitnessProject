@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, StatusBar, AsyncStorage } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  Switch, 
+  TouchableOpacity, 
+  StatusBar,
+  TextInput
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // imported the styles
 import { Colors, getStyleGroups } from './styles';
@@ -56,7 +65,6 @@ export default function WorkoutApp() {
     setSettings(newSettings);
     saveSettings(newSettings);
   };
-
 
   // Get dynamic styles based on dark mode
   const dynamicStyles = getStyleGroups(settings.darkMode);
@@ -133,12 +141,19 @@ export default function WorkoutApp() {
       <Text style={headerStyles.title}>Fitness App</Text>
       
       <View style={buttonStyles.buttonContainer}>
-      <TouchableOpacity 
-    style={buttonStyles.button}
-    onPress={() => setCurrentScreen('workout')}
-  >
-    <Text style={buttonStyles.buttonText}>Workout</Text>
-  </TouchableOpacity>
+        <TouchableOpacity 
+          style={buttonStyles.button}
+          onPress={() => setCurrentScreen('workout')}
+        >
+          <Text style={buttonStyles.buttonText}>Workout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={buttonStyles.button}
+          onPress={() => setCurrentScreen('progress')}
+        >
+          <Text style={buttonStyles.buttonText}>Progress</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity 
           style={buttonStyles.button}
@@ -215,10 +230,10 @@ export default function WorkoutApp() {
         />
       </View>
 
-        {/* 
-          READ THIS FOR NEW SETTINGS: I left some section templates just in case I didn't already include anything in the above. 
-          To add new ones is pretty easy, just add the button value to it or follow the above sections
-        */}
+      {/* 
+        READ THIS FOR NEW SETTINGS: I left some section templates just in case I didn't already include anything in the above. 
+        To add new ones is pretty easy, just add the button value to it or follow the above sections
+      */}
 
       <View style={sectionStyles.section}>
         <Text style={sectionStyles.sectionTitle}>Section</Text>
@@ -247,7 +262,6 @@ export default function WorkoutApp() {
     </ScrollView>
   );
 
-    
   const WorkoutScreen = () => {
     const [exercise, setExercise] = useState('');
     const [duration, setDuration] = useState('');
@@ -372,6 +386,103 @@ export default function WorkoutApp() {
     );
   };
 
+  // NEW: Progress screen to show totals and history
+  const ProgressScreen = () => {
+    const [workouts, setWorkouts] = useState([]);
+    const [totals, setTotals] = useState({
+      sessions: 0,
+      minutes: 0,
+      calories: 0,
+    });
+
+    useEffect(() => {
+      const load = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('workout-logs');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+
+            const sessions = parsed.length;
+            const minutes = parsed.reduce(
+              (sum, w) => sum + Number(w.duration || 0),
+              0
+            );
+            const calories = parsed.reduce(
+              (sum, w) => sum + Number(w.calories || 0),
+              0
+            );
+
+            setWorkouts(parsed);
+            setTotals({ sessions, minutes, calories });
+          }
+        } catch (e) {
+          console.log('Error loading workouts in ProgressScreen', e);
+        }
+      };
+
+      load();
+    }, []);
+
+    return (
+      <ScrollView style={appStyles.container}>
+        <View style={headerStyles.header}>
+          <TouchableOpacity
+            onPress={() => setCurrentScreen('home')}
+            style={headerStyles.backButton}
+          >
+            <Text style={headerStyles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={headerStyles.settingsTitle}>Progress</Text>
+        </View>
+
+        <View style={sectionStyles.section}>
+          <Text style={sectionStyles.sectionTitle}>Overall Stats</Text>
+
+          <View style={settingsStyles.settingsItem}>
+            <Text style={settingsStyles.settingsLabel}>
+              Total workouts: {totals.sessions}
+            </Text>
+          </View>
+
+          <View style={settingsStyles.settingsItem}>
+            <Text style={settingsStyles.settingsLabel}>
+              Total minutes: {totals.minutes}
+            </Text>
+          </View>
+
+          <View style={settingsStyles.settingsItem}>
+            <Text style={settingsStyles.settingsLabel}>
+              Total calories: {totals.calories}
+            </Text>
+          </View>
+        </View>
+
+        <View style={sectionStyles.section}>
+          <Text style={sectionStyles.sectionTitle}>Workout History</Text>
+
+          {workouts.length === 0 ? (
+            <Text
+              style={{
+                color: settings.darkMode ? '#aaa' : '#555',
+                textAlign: 'center',
+                marginTop: 10,
+              }}
+            >
+              No workouts logged yet.
+            </Text>
+          ) : (
+            workouts.map((w) => (
+              <View key={w.id} style={settingsStyles.settingsItem}>
+                <Text style={settingsStyles.settingsLabel}>
+                  {w.exercise} — {w.duration} min — {w.calories} cal
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -384,9 +495,11 @@ export default function WorkoutApp() {
   return (
     <View style={appStyles.appContainer}>
       <StatusBar backgroundColor={settings.darkMode ? Colors.dark.background : Colors.light.background} />
-      {currentScreen === 'home' ? <HomeScreen /> : <SettingsScreen />}
-      {currentScreen === 'settings' && <SettingsScreen />}
+      
+      {currentScreen === 'home' && <HomeScreen />}
       {currentScreen === 'workout' && <WorkoutScreen />}
+      {currentScreen === 'progress' && <ProgressScreen />}
+      {currentScreen === 'settings' && <SettingsScreen />}
     </View>
   );
 }
